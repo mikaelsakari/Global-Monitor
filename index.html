@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Global Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--sa:'Outfit',sans-serif;--se:'Newsreader',serif;--m:'DM Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0c;font-family:var(--sa)}
+@keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pg{0%,100%{opacity:.4}50%{opacity:.85}}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+a:hover span{color:#aaa!important}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect}=React;
+const TI={down:"↘",up:"↗",stable:"→",mixed:"↔"};
+const TC={down:"#E63946",up:"#2A9D8F",stable:"#E9C46A",mixed:"#6A4C93"};
+
+function Bar({score,color,label}){
+  return(<div style={{width:"100%"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11,fontFamily:"var(--m)",letterSpacing:1,textTransform:"uppercase"}}><span style={{color:"#8a8a8a"}}>{label}</span><span style={{color}}>{score.toFixed(1)}/7</span></div><div style={{width:"100%",height:6,background:"rgba(255,255,255,0.06)",borderRadius:3,overflow:"hidden"}}><div style={{width:`${(score/7)*100}%`,height:"100%",background:`linear-gradient(90deg,${color},${color}88)`,borderRadius:3,transition:"width 1s ease"}}/></div></div>);
+}
+
+function Card({item,accent,i}){
+  const[hv,setH]=useState(false);
+  return(<div onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{background:hv?"rgba(255,255,255,0.06)":"rgba(255,255,255,0.025)",borderRadius:14,padding:"15px 17px",transition:"all .3s",borderLeft:`3px solid ${hv?accent:"transparent"}`,animation:`fi .5s ease ${i*.06}s both`}}>
+    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:6,flexWrap:"wrap"}}>
+      <span style={{fontSize:10,fontFamily:"var(--m)",textTransform:"uppercase",letterSpacing:1.5,color:accent,background:`${accent}18`,padding:"2px 7px",borderRadius:4}}>{item.tag}</span>
+      <span style={{fontSize:10,color:"#555",fontFamily:"var(--m)"}}>{item.d}</span>
+    </div>
+    <h4 style={{margin:"0 0 4px",fontSize:14.5,fontWeight:600,color:"#e8e8e8",lineHeight:1.35,fontFamily:"var(--se)"}}>{item.h}</h4>
+    <p style={{margin:"0 0 8px",fontSize:12.5,color:"#888",lineHeight:1.55,fontFamily:"var(--sa)"}}>{item.s}</p>
+    <a href={item.url} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,textDecoration:"none",borderBottom:"1px dotted #444",paddingBottom:1}}>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      <span style={{fontSize:10,fontFamily:"var(--m)",color:"#666"}}>{item.src}</span>
+    </a>
+  </div>);
+}
+
+function Tab({r,on,onClick}){
+  return(<button onClick={onClick} style={{background:on?`${r.color}22`:"transparent",border:on?`1px solid ${r.color}55`:"1px solid transparent",borderRadius:10,padding:"9px 11px",cursor:"pointer",display:"flex",alignItems:"center",gap:5,transition:"all .25s",whiteSpace:"nowrap",flexShrink:0}}>
+    <span style={{fontSize:13}}>{r.emoji}</span>
+    <span style={{fontSize:10.5,fontFamily:"var(--sa)",fontWeight:on?600:400,color:on?r.color:"#777"}}>{r.label}</span>
+  </button>);
+}
+
+function App(){
+  const[data,setData]=useState(null);
+  const[ri,setRi]=useState(0);
+  const[view,setV]=useState("news");
+
+  useEffect(()=>{
+    fetch("weekly.json").then(r=>r.json()).then(setData).catch(e=>console.error("Fetch failed:",e));
+  },[]);
+
+  if(!data) return <div style={{minHeight:"100vh",background:"#0a0a0c",color:"#666",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"monospace",fontSize:14}}>Ladataan...</div>;
+
+  const regions=data.regions;
+  const r=regions[ri];
+  const ge=data.globalEconomy;
+  const vs=["news","economy","democracy"];
+  const vl={news:"Uutiset",economy:"Talous",democracy:"Demokratia"};
+
+  return(<div style={{minHeight:"100vh",background:"#0a0a0c",color:"#e0e0e0",fontFamily:"var(--sa)",position:"relative",overflow:"hidden"}}>
+    <style>{`.vt button{background:none;border:1px solid #333;color:#666;padding:7px 13px;font-size:10px;font-family:var(--m);text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;transition:all .25s}.vt button:hover{border-color:#555;color:#999}.vt button.on{border-color:${r.color};color:${r.color};background:${r.color}12}.vt button:first-child{border-radius:8px 0 0 8px}.vt button:last-child{border-radius:0 8px 8px 0}`}</style>
+    <div style={{position:"fixed",top:-200,right:-200,width:600,height:600,borderRadius:"50%",background:`radial-gradient(circle,${r.color}10 0%,transparent 70%)`,transition:"background .8s",pointerEvents:"none",zIndex:0}}/>
+
+    <header style={{position:"relative",zIndex:2,padding:"24px 20px 0"}}>
+      <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:4}}>
+        <div style={{width:7,height:7,borderRadius:"50%",background:"#E63946",animation:"pg 2s ease-in-out infinite"}}/>
+        <span style={{fontSize:10,fontFamily:"var(--m)",textTransform:"uppercase",letterSpacing:2,color:"#666"}}>{data.weekLabel}</span>
+      </div>
+      <h1 style={{fontSize:27,fontFamily:"var(--se)",fontWeight:700,letterSpacing:-.5,color:"#fff"}}>Global Monitor</h1>
+      <p style={{marginTop:3,fontSize:11.5,color:"#555"}}>Uutiset · Talous · Demokratisaatio — {regions.length} aluetta</p>
+    </header>
+
+    <div style={{position:"relative",zIndex:2,display:"flex",gap:4,padding:"13px 20px",overflowX:"auto"}}>
+      {regions.map((reg,i)=><Tab key={reg.id} r={reg} on={i===ri} onClick={()=>{setRi(i);setV("news");}}/>)}
+    </div>
+    <div style={{padding:"0 20px 13px",position:"relative",zIndex:2}}>
+      <div className="vt" style={{display:"inline-flex"}}>
+        {vs.map(v=><button key={v} className={view===v?"on":""} onClick={()=>setV(v)}>{vl[v]}</button>)}
+      </div>
+    </div>
+
+    <main style={{position:"relative",zIndex:2,padding:"0 20px 34px"}}>
+      {view==="news"&&(<div key={r.id+"-n"} style={{display:"flex",flexDirection:"column",gap:8}}>
+        {r.news.map((it,i)=><Card key={i} item={it} accent={r.accent} i={i}/>)}
+      </div>)}
+
+      {view==="economy"&&(<div key={r.id+"-e"} style={{animation:"fi .4s ease both"}}>
+        <div style={{background:"rgba(255,255,255,0.03)",borderRadius:14,padding:16,marginBottom:11,borderLeft:"3px solid #E9C46A"}}>
+          <h3 style={{fontSize:13,fontFamily:"var(--se)",fontWeight:700,color:"#E9C46A",marginBottom:9}}>{ge.title}</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
+            {ge.items.map((it,i)=>(<div key={i} style={{display:"flex",alignItems:"flex-start",gap:7}}>
+              <span style={{color:"#E9C46A",fontSize:11,lineHeight:"18px",flexShrink:0}}>●</span>
+              <div><span style={{fontSize:12.5,color:"#bbb",lineHeight:1.5}}>{it.f}</span><br/>
+              <a href={it.u} target="_blank" rel="noopener noreferrer" style={{fontSize:9.5,fontFamily:"var(--m)",color:"#666",textDecoration:"none",borderBottom:"1px dotted #444"}}>{it.s} ↗</a></div>
+            </div>))}
+          </div>
+        </div>
+        <h3 style={{fontSize:11,fontFamily:"var(--m)",textTransform:"uppercase",letterSpacing:1.5,color:"#666",marginBottom:9}}>{r.label} · Talous</h3>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {r.econ.map((it,i)=><Card key={i} item={it} accent={r.accent} i={i}/>)}
+        </div>
+      </div>)}
+
+      {view==="democracy"&&(<div key={r.id+"-d"} style={{animation:"fi .4s ease both"}}>
+        <div style={{background:"rgba(255,255,255,0.03)",borderRadius:16,padding:18,marginBottom:11,border:`1px solid ${r.color}22`}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <div><span style={{fontSize:36,fontFamily:"var(--se)",fontWeight:700,color:r.color}}>{r.ds.toFixed(1)}</span><span style={{fontSize:13,color:"#555",fontFamily:"var(--m)"}}> /7</span></div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:20,color:TC[r.dt]}}>{TI[r.dt]}</div><div style={{fontSize:9.5,fontFamily:"var(--m)",textTransform:"uppercase",letterSpacing:1,color:"#666"}}>Trendi</div></div>
+          </div>
+          <Bar score={r.ds} color={r.color} label={r.dl}/>
+          <p style={{marginTop:12,fontSize:12.5,color:"#999",lineHeight:1.6}}>{r.dsum}</p>
+        </div>
+        <div style={{background:"rgba(255,255,255,0.025)",borderRadius:14,padding:15,marginBottom:11,borderLeft:`3px solid ${r.accent}`}}>
+          <h3 style={{fontSize:10.5,fontFamily:"var(--m)",textTransform:"uppercase",letterSpacing:1.5,color:r.accent,marginBottom:7}}>Kansalaisyhteiskunta</h3>
+          <p style={{fontSize:12.5,color:"#999",lineHeight:1.6}}>{r.cs}</p>
+        </div>
+        <div style={{background:"rgba(255,255,255,0.025)",borderRadius:14,padding:15}}>
+          <h3 style={{margin:"0 0 11px",fontSize:10.5,fontFamily:"var(--m)",textTransform:"uppercase",letterSpacing:1.5,color:"#666"}}>Alueiden vertailu</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {regions.map(reg=>(<div key={reg.id} style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:12,width:18,textAlign:"center"}}>{reg.emoji}</span>
+              <div style={{flex:1}}><Bar score={reg.ds} color={reg.color} label={reg.label}/></div>
+              <span style={{fontSize:12,color:TC[reg.dt],width:16,textAlign:"center"}}>{TI[reg.dt]}</span>
+            </div>))}
+          </div>
+          <div style={{marginTop:14,padding:"11px 13px",background:"rgba(255,255,255,0.03)",borderRadius:10,borderLeft:"3px solid #E9C46A"}}>
+            <p style={{margin:0,fontSize:11.5,color:"#888",lineHeight:1.6}}>
+              <strong style={{color:"#bbb"}}>Viikon teema:</strong> {data.weeklyDemocracyTheme}
+            </p>
+          </div>
+          <div style={{marginTop:11,display:"flex",gap:6,flexWrap:"wrap"}}>
+            <span style={{fontSize:9,fontFamily:"var(--m)",color:"#555",background:"rgba(255,255,255,0.04)",padding:"3px 8px",borderRadius:6}}>V-Dem -tyylinen 0–7</span>
+            <span style={{fontSize:9,fontFamily:"var(--m)",color:"#555",background:"rgba(255,255,255,0.04)",padding:"3px 8px",borderRadius:6}}>↗ Paranee · → Vakaa · ↘ Heikkenee · ↔ Sekalainen</span>
+          </div>
+        </div>
+      </div>)}
+    </main>
+
+    <footer style={{position:"relative",zIndex:2,padding:"16px 20px 24px",borderTop:"1px solid rgba(255,255,255,0.05)",textAlign:"center"}}>
+      <p style={{fontSize:9,color:"#444",fontFamily:"var(--m)",letterSpacing:.5,lineHeight:1.6}}>
+        Päivitetty {data.updated}
+      </p>
+    </footer>
+  </div>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
